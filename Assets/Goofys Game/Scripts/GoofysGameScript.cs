@@ -13,43 +13,43 @@ public class GoofysGameScript : MonoBehaviour
     public KMAudio Audio;
     public KMBombInfo Bomb;
     public KMBombModule Module;
-    public TextMesh S;
-    public GameObject[] L;
-    public KMSelectable[] KP;
-    public KMSelectable Su;
-    public Material[] Mat;
+    public TextMesh Screen;
+    public GameObject[] LEDs;
+    public KMSelectable[] KeyPad;
+    public KMSelectable Submit;
+    public Material[] Materials;
 
     static int moduleIdCounter = 1;
     int moduleId;
     bool moduleSolved = false;
-    bool mode = false;
-    string r;
-    string inp = "";
-    List<int> lC = new List<int>();
+    bool Swapped = false;
+    string Solution = "";
+    string Input = "";
+    List<int> lightCodes = new List<int>();
 
-    KMSelectable.OnInteractHandler KPP(int btn)
+    KMSelectable.OnInteractHandler KeyPadPress(int btn)
     {
         return delegate
         {
             if (moduleSolved)
                 return false;
-            KP[btn].AddInteractionPunch();
-            Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, KP[btn].transform);
+            KeyPad[btn].AddInteractionPunch();
+            Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, KeyPad[btn].transform);
             if (btn == 10)
             {
-                if (inp.Length == 0)
+                if (Input.Length == 0)
                     return false;
                 else
-                    inp = inp.Substring(0, inp.Length - 1);
+                    Input = Input.Substring(0, Input.Length - 1);
             }
             else
             {
-                if (inp.Length == 33)
+                if (Input.Length == 33)
                     return false;
                 else
-                    inp += btn.ToString();
+                    Input += btn.ToString();
             }
-            setScreen(inp, 255, 255, 255);
+            setScreen(Input, 255, 255, 255);
             return false;
         };
     }
@@ -58,45 +58,30 @@ public class GoofysGameScript : MonoBehaviour
     {
         moduleId = moduleIdCounter++;
 
-        for (int i = 0; i < KP.Length; i++)
+        for (int i = 0; i < KeyPad.Length; i++)
         {
-            KP[i].OnInteract += KPP(i);
+            KeyPad[i].OnInteract += KeyPadPress(i);
         }
 
-        Su.OnInteract += delegate
+        Submit.OnInteract += delegate
         {
             if (moduleSolved)
                 return false;
 
-            if (inp.Equals(r))
+            if (Input.Equals(Solution))
             {
                 Module.HandlePass();
                 moduleSolved = true;
                 setScreen("GG solved", 0, 255, 0);
                 StopAllCoroutines();
-                StartCoroutine(Vic());
+                StartCoroutine(Victory());
             }
             else
             {
-                if (inp.Length > r.Length)
-                {
-                    if (Random.Range(0, 6) < 2)
-                        Debug.LogFormat(@"[Goofy's Sequence #{0}] Incorrect - Your number has {1} more {2} than the solution", moduleId, (inp.Length - r.Length).ToString(), inp.Length - r.Length == 1 ? "digit" : "digits");
-                    else
-                        Debug.LogFormat(@"[Goofy's Game #{0}] Incorrect - Your number has {1} more {2} than the solution", moduleId, (inp.Length - r.Length).ToString(), inp.Length - r.Length == 1 ? "digit" : "digits");
-                }
-                else if (inp.Length < r.Length)
-                {
-                    if (Random.Range(0, 6) < 2)
-                        Debug.LogFormat(@"[Conway's Game #{0}] Incorrect - Your number has {1} less {2} than the solution", moduleId, (r.Length - inp.Length).ToString(), r.Length - inp.Length == 1 ? "digit" : "digits");
-                    else
-                        Debug.LogFormat(@"[Goofy's Game #{0}] Incorrect - Your number has {1} less {2} than the solution", moduleId, (r.Length - inp.Length).ToString(), r.Length - inp.Length == 1 ? "digit" : "digits");
-                }
-                else
-                    Debug.LogFormat(@"[Goofy's Game #{0}] Incorrect - Your number has the same amount of digits as the solution, but your digits are wrong.", moduleId);
+                Debug.LogFormat(@"[Goofy's Game #{0}] Incorrect - Your number was {1} - Expected number is {2}.", moduleId, Input, Solution);
                 Module.HandleStrike();
                 setScreen("Incorrect!", 255, 0, 0);
-                inp = "";
+                Input = "";
             }
 
             return false;
@@ -104,54 +89,63 @@ public class GoofysGameScript : MonoBehaviour
 
         for (int i = 0; i < 3; i++)
         {
-            lC.Add(Random.Range(0, 10));
-            StartCoroutine(LightCodeEmitter(lC[i], i));
+            lightCodes.Add(Random.Range(0, 10));
+            StartCoroutine(LightCodeEmitter(lightCodes[i], i));
         }
 
         var mS = Random.Range(0, 2);
         if (mS != 0)
         {
-            mode = true;
-            var pos = KP[0].transform.localPosition;
-            var rot = KP[0].transform.localRotation;
-            var sca = KP[0].transform.localScale;
-            KP[0].transform.localPosition = KP[10].transform.localPosition;
-            KP[0].transform.localRotation = KP[10].transform.localRotation;
-            KP[0].transform.localScale = KP[10].transform.localScale;
-            KP[10].transform.localPosition = pos;
-            KP[10].transform.localRotation = rot;
-            KP[10].transform.localScale = sca;
+            Swapped = true;
+            var pos = KeyPad[0].transform.localPosition;
+            var rot = KeyPad[0].transform.localRotation;
+            var sca = KeyPad[0].transform.localScale;
+            KeyPad[0].transform.localPosition = KeyPad[10].transform.localPosition;
+            KeyPad[0].transform.localRotation = KeyPad[10].transform.localRotation;
+            KeyPad[0].transform.localScale = KeyPad[10].transform.localScale;
+            KeyPad[10].transform.localPosition = pos;
+            KeyPad[10].transform.localRotation = rot;
+            KeyPad[10].transform.localScale = sca;
         }
 
-        var s = Bomb.GetSerialNumberLetters().Select(c => c - 'A' + 1).ToList();
-        var d = Bomb.GetSerialNumberNumbers().ToList();
-        for (int i = 0; i < d.Count; i++)
-            s.Add(d[i]);
-        var w = Bomb.GetBatteryHolderCount() + Bomb.GetIndicators().Count() + Bomb.GetPortPlateCount();
+        var snLetters = Bomb.GetSerialNumberLetters().Select(c => c - 'A' + 1).ToList();
+        var snDigits = Bomb.GetSerialNumberNumbers().ToList();
+        for (int i = 0; i < snDigits.Count; i++)
+            snLetters.Add(snDigits[i]);
+        var widgets = Bomb.GetBatteryHolderCount() + Bomb.GetIndicators().Count() + Bomb.GetPortPlateCount();
 
-        if (!mode)
-            r = ((lC[0] + w) * (lC[1] + s.Sum()) + lC[2] + w).ToString();
+        if (!Swapped)
+            Solution = ((lightCodes[0] + widgets) * (lightCodes[1] + snLetters.Sum()) + lightCodes[2] + widgets).ToString();
         else
-            r = ((lC[0] + s.Sum()) * (lC[1] + w) + lC[2] + s.Sum()).ToString();
+            Solution = ((lightCodes[0] + snLetters.Sum()) * (lightCodes[1] + widgets) + lightCodes[2] + snLetters.Sum()).ToString();
 
+        Debug.LogFormat(@"[Goofy's Game #{0}] DEL button is in the {1} position.", moduleId, Swapped ? "top left" : "bottom right");
+        Debug.LogFormat(@"[Goofy's Game #{0}] Sum of serial number characters is {1}.", moduleId, snLetters.Sum().ToString());
+        Debug.LogFormat(@"[Goofy's Game #{0}] Sum of battery holders, indicators and portplates is {1}.", moduleId, widgets.ToString());
+        Debug.LogFormat(@"[Goofy's Game #{0}] The LEDs are morsing the following numbers: {1}", moduleId, lightCodes.Join(", ").ToString());
+        Debug.LogFormat(@"[Goofy's Game #{0}] Plugging variables into the equation: ({1} + {2}) × ({3} + {4}) + {5} + {2}", moduleId, lightCodes[0], Swapped ? snLetters.Sum() : widgets, lightCodes[1], Swapped ? widgets : snLetters.Sum(), lightCodes[2]);
+        Debug.LogFormat(@"[Goofy's Game #{0}] First step of equation: {1} × {2} + {3}", moduleId, lightCodes[0] + (Swapped ? snLetters.Sum() : widgets), lightCodes[1] + (Swapped ? widgets : snLetters.Sum()), lightCodes[2] + (Swapped ? snLetters.Sum() : widgets));
+        Debug.LogFormat(@"[Goofy's Game #{0}] Last step of equation: {1} + {2}", moduleId, (lightCodes[0] + (Swapped ? snLetters.Sum() : widgets)) * (lightCodes[1] + (Swapped ? widgets : snLetters.Sum())), lightCodes[2] + (Swapped ? snLetters.Sum() : widgets));
+        Debug.LogFormat(@"[Goofy's Game #{0}] Solution before any iterations is {1}.", moduleId, Solution);
         for (int i = 0; i < 4; i++)
         {
-            r = doit(r);
+            Solution = conwaySequence(Solution);
+            Debug.LogFormat(@"[Goofy's Game #{0}] Solution after {1} {2} is {3}.", moduleId, (i + 1).ToString(), i == 0 ? "iteration" : "iterations", Solution);
         }
     }
 
     void setScreen(string text, byte r, byte g, byte b)
     {
-        S.text = text;
-        S.color = new Color32(r, g, b, 255);
+        Screen.text = text;
+        Screen.color = new Color32(r, g, b, 255);
     }
 
     void SetLED(int i, bool j)
     {
         if (j)
-            L[i].GetComponent<MeshRenderer>().material = Mat[0];
+            LEDs[i].GetComponent<MeshRenderer>().material = Materials[0];
         else
-            L[i].GetComponent<MeshRenderer>().material = Mat[1];
+            LEDs[i].GetComponent<MeshRenderer>().material = Materials[1];
 
     }
 
@@ -210,72 +204,72 @@ public class GoofysGameScript : MonoBehaviour
         }
     }
 
-    IEnumerator Vic()
+    IEnumerator Victory()
     {
         yield return new WaitForSeconds(1f);
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             SetLED(0, true);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(1, true);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(2, true);
             SetLED(0, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(1, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(2, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
         }
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             SetLED(2, true);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(1, true);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(0, true);
             SetLED(2, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(1, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
             SetLED(0, false);
-            yield return new WaitForSeconds(.1f);
+            yield return new WaitForSeconds(.05f);
         }
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 6; i++)
         {
             SetLED(2, true);
             SetLED(1, true);
             SetLED(0, true);
-            yield return new WaitForSeconds(.2f);
+            yield return new WaitForSeconds(.1f);
             SetLED(2, false);
             SetLED(1, false);
             SetLED(0, false);
-            yield return new WaitForSeconds(.2f);
+            yield return new WaitForSeconds(.1f);
         }
     }
 
-    string doit(string n)
+    string conwaySequence(string number)
     {
-        StringBuilder r = new StringBuilder();
+        StringBuilder result = new StringBuilder();
 
-        char re = n[0];
-        n = n.Substring(1, n.Length - 1) + " ";
+        char repeat = number[0];
+        number = number.Substring(1, number.Length - 1) + " ";
         int times = 1;
 
-        foreach (char a in n)
+        foreach (char actual in number)
         {
-            if (a != re)
+            if (actual != repeat)
             {
-                r.Append(Convert.ToString(times) + re);
+                result.Append(Convert.ToString(times) + repeat);
                 times = 1;
-                re = a;
+                repeat = actual;
             }
             else
             {
                 times += 1;
             }
         }
-        return r.ToString();
+        return result.ToString();
     }
 
 #pragma warning disable 0414
@@ -294,14 +288,14 @@ public class GoofysGameScript : MonoBehaviour
         {
             yield return null;
             var num = m.Groups["num"].Value;
-            if (num.Length + inp.Length > 33)
+            if (num.Length + Input.Length > 33)
             {
                 yield return "sendtochaterror Too many numbers. This would exceed the maximum of 33 digits on the screen";
                 yield break;
             }
             for (int i = 0; i < num.Length; i++)
             {
-                KP[int.Parse(num[i].ToString())].OnInteract();
+                KeyPad[int.Parse(num[i].ToString())].OnInteract();
                 yield return new WaitForSeconds(.1f);
             }
             yield break;
@@ -316,14 +310,14 @@ public class GoofysGameScript : MonoBehaviour
                 yield return "sendtochaterror You are trying to delete 0 digits. Good Job.";
                 yield break;
             }
-            if (num > inp.Length)
+            if (num > Input.Length)
             {
                 yield return "sendtochaterror Number is too big. It needs to be smaller than the amount of digits on the screen";
                 yield break;
             }
             for (int i = 0; i < num; i++)
             {
-                KP[10].OnInteract();
+                KeyPad[10].OnInteract();
                 yield return new WaitForSeconds(.1f);
             }
             yield break;
@@ -331,13 +325,50 @@ public class GoofysGameScript : MonoBehaviour
         else if (Regex.IsMatch(command, @"^\s*(submit)\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
         {
             yield return null;
-            Su.OnInteract();
+            Submit.OnInteract();
             yield break;
         }
         else
         {
             yield return "sendtochaterror Invalid Command";
             yield break;
+        }
+    }
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        Debug.LogFormat(@"[Goofy's Game #{0}] Module was force solved by TP.", moduleId);
+
+        while (!moduleSolved)
+        {
+
+            while (Input.Length > Solution.Length)
+            {
+                KeyPad[10].OnInteract();
+                yield return new WaitForSeconds(.1f);
+            };
+
+            var w = Solution.Substring(0, Input.Length);
+
+            for (int i = w.Length - 1; i >= 0; i--)
+            {
+                if (w[i] != Input[i])
+                {
+                    KeyPad[10].OnInteract();
+                    yield return new WaitForSeconds(.1f);
+                }
+            }
+
+            var n = Solution.Substring(Input.Length);
+            foreach (var digit in n)
+            {
+                KeyPad[int.Parse(digit.ToString())].OnInteract();
+                yield return new WaitForSeconds(.1f);
+            }
+
+            if (Input.Length == Solution.Length)
+                Submit.OnInteract();
+            yield return new WaitForSeconds(.1f);
         }
     }
 }
